@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pokémon Collectie</title>
-  <link rel="stylesheet" href="src/style.css?v=9">
+  <link rel="stylesheet" href="src/style.css?v=10">
 </head>
 <body>
   <header class="topbar">
@@ -18,7 +18,7 @@
     </div>
   </header>
   <main id="app"></main>
-  <footer class="foot"><button id="btn-backup" class="linkbtn">Back-up</button> · <span>versie 9</span></footer>
+  <footer class="foot"><button id="btn-backup" class="linkbtn">Back-up</button> · <span>versie 10</span></footer>
 
   <dialog id="dlg-add">
     <form method="dialog" class="dlg-head">
@@ -26,6 +26,7 @@
       <button class="btn ghost" aria-label="Sluiten">✕</button>
     </form>
     <input id="set-search" type="search" placeholder="Zoek op naam of serie…" autocomplete="off">
+    <div id="year-chips" class="year-chips" role="group" aria-label="Filter op jaar"></div>
     <div id="set-list" class="set-list"></div>
   </dialog>
 
@@ -46,6 +47,6 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="src/app.js?v=9"></script>
+  <script type="module" src="src/app.js?v=10"></script>
 </body>
 </html>

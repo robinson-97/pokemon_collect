@@ -1,7 +1,7 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=9';
-import { fetchSetPrices, diagnosePrices } from './prices.js?v=9';
-import * as store from './store.js?v=9';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=9';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=10';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=10';
+import * as store from './store.js?v=10';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=10';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -161,7 +161,7 @@ async function renderSet(setId) {
       const out = $('#diag-out'); out.hidden = false; out.textContent = 'Bezig…';
       out.textContent = (await diagnose(setId)) + '\n\n' + (await diagnosePrices(set));
     };
-    $('#updated').textContent = `Prijzen: ${SOURCES[source].name} via TCGdex, bij ${priced} van ${cards.length} kaarten bekend${pricesAt ? ` (${fmtDate(pricesAt)})` : ''}. ${hint}`;
+    $('#updated').textContent = `Prijzen: ${SOURCES[source].name}${source === 'cm' ? ' (alle talen)' : ' (Engelse kaarten)'} via TCGdex, bij ${priced} van ${cards.length} kaarten bekend${pricesAt ? ` (${fmtDate(pricesAt)})` : ''}. ${hint}`;
     $('#summary').innerHTML = `
       <div class="bar big"><span style="width:${sum.percent}%"></span></div>
       <div class="sum-row"><span><b>${sum.owned}</b> / ${sum.total} kaarten (${sum.percent}%)</span>
@@ -281,7 +281,7 @@ function priceBlock(c, cond) {
       <tr><th colspan="2">TCGplayer${tcg.url ? ` · <a href="${esc(tcg.url)}" target="_blank" rel="noopener">openen</a>` : ''}</th></tr>
       ${tcg.low != null || tcg.market != null ? row('Laagste', tcg.low, U, source === 'tcg') + row('Marktprijs', tcg.market, U) : '<tr><td colspan="2" class="muted">Geen prijs bekend</td></tr>'}
     </table>
-    <p class="muted small">Een prijs per staat (LP, MP, HP) is niet beschikbaar. Je ziet de laagste prijs van alle aanbiedingen.</p>`;
+    <p class="muted small">Een prijs per staat (LP, MP, HP) is niet beschikbaar. Je ziet de laagste prijs van alle aanbiedingen. ${source === 'cm' ? 'Cardmarket telt aanbiedingen in alle talen mee, dus dit kan lager zijn dan een Engelse kaart kost. Voor Engelse kaarten kies je TCGplayer.' : 'TCGplayer is de Amerikaanse markt, met Engelse kaarten.'}</p>`;
 }
 
 function openCard(c, owned, setCond) {
@@ -324,28 +324,51 @@ async function openAdd() {
   }
   drawSets();
 }
+let yearFilter = '';
+const yearOf = s => String(s.releaseDate || '').slice(0, 4);
 function drawSets() {
   const q = $('#set-search').value.trim().toLowerCase();
-  const bySeries = new Map();
+
+  // Jaarknoppen: alle jaren waarin sets zijn uitgekomen, nieuwste eerst.
+  const perYear = new Map();
+  for (const s of allSets) perYear.set(yearOf(s), (perYear.get(yearOf(s)) || 0) + 1);
+  const years = [...perYear.keys()].filter(Boolean).sort().reverse();
+  $('#year-chips').innerHTML = `<button class="chip ${yearFilter ? '' : 'on'}" data-y="">Alle jaren</button>` +
+    years.map(y => `<button class="chip ${yearFilter === y ? 'on' : ''}" data-y="${y}">${y} <small>${perYear.get(y)}</small></button>`).join('');
+
+  const byYear = new Map();
   for (const s of allSets) {
+    if (yearFilter && yearOf(s) !== yearFilter) continue;
     if (q && !`${s.name} ${s.series}`.toLowerCase().includes(q)) continue;
-    if (!bySeries.has(s.series)) bySeries.set(s.series, []);
-    bySeries.get(s.series).push(s);
+    const y = yearOf(s) || 'Onbekend';
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(s);
   }
-  $('#set-list').innerHTML = [...bySeries].map(([series, sets]) => `
-    <h4>${esc(series)}</h4>${sets.map(s => `
-      <div class="set-row">
-        ${s.images?.symbol ? `<img src="${esc(s.images.symbol)}" alt="" loading="lazy">` : '<span></span>'}
-        <span class="grow">${esc(s.name)} <span class="muted small">${s.total} kaarten · ${esc(s.releaseDate)}</span></span>
-        ${store.isTracked(s.id) ? '<span class="muted">✓ Toegevoegd</span>'
+  const date = d => (d ? new Date(d.replace(/\//g, '-')).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+  $('#set-list').innerHTML = [...byYear].map(([y, sets]) => `
+    <h4>${esc(y)} <span class="small">· ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}</span></h4>
+    <div class="pick-grid">${sets.map(s => `
+      <div class="pick">
+        <div class="pick-img">${s.images?.logo ? `<img src="${esc(s.images.logo)}" alt="Logo ${esc(s.name)}" loading="lazy">` : `<span class="muted">${esc(s.name)}</span>`}</div>
+        <div class="pick-name">${s.images?.symbol ? `<img class="sym" src="${esc(s.images.symbol)}" alt="" loading="lazy">` : ''}<b>${esc(s.name)}</b></div>
+        <div class="muted small">${esc(s.series)} · ${s.total} kaarten<br>${esc(date(s.releaseDate))}</div>
+        ${store.isTracked(s.id) ? '<div class="pick-done">✓ Toegevoegd</div>'
           : `<button class="btn" data-add="${esc(s.id)}">Toevoegen</button>`}
-      </div>`).join('')}`).join('') || '<p class="muted">Geen sets gevonden.</p>';
+      </div>`).join('')}</div>`).join('') || '<p class="muted">Geen sets gevonden.</p>';
 }
+$('#year-chips').onclick = e => {
+  const b = e.target.closest('[data-y]'); if (!b) return;
+  yearFilter = b.dataset.y;
+  drawSets();
+  $('#set-list').scrollTop = 0;
+};
 $('#set-search').oninput = () => allSets && drawSets();
 $('#set-list').onclick = e => {
-  const id = e.target.dataset.add; if (!id) return;
+  const id = e.target.closest('[data-add]')?.dataset.add; if (!id) return;
   store.addSet(allSets.find(s => s.id === id));
+  const top = $('#set-list').scrollTop;
   drawSets();
+  $('#set-list').scrollTop = top;
   route();
 };
 

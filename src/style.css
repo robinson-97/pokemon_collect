@@ -168,3 +168,20 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 #diag-out { white-space: pre-wrap; word-break: break-all; max-height: 40vh; overflow: auto; font-size: .72rem; margin: 8px 0 0; padding: 8px; background: var(--surface); border-radius: 8px; user-select: all; }
 .notice .btn { margin-top: 6px; }
+
+/* sets kiezen: jaren en afbeeldingen */
+#dlg-add { width: min(920px, 96vw); }
+.year-chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 4px; scrollbar-width: thin; }
+.year-chips .chip { flex: 0 0 auto; }
+#dlg-add .set-list { max-height: 65vh; }
+.set-list h4 { position: sticky; top: 0; background: var(--surface); padding: 6px 0; margin: 10px 0 6px; z-index: 1; color: var(--text); font-size: 1.1rem; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.pick { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.pick-img { height: 84px; display: flex; align-items: center; justify-content: center; background: var(--surface); border-radius: 8px; padding: 6px; }
+.pick-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.pick-name { display: flex; align-items: center; gap: 6px; }
+.pick-name .sym { width: 20px; height: 20px; object-fit: contain; }
+.pick .btn, .pick-done { margin-top: auto; text-align: center; }
+.pick-done { color: var(--ok); font-weight: 600; padding: 8px 0; }
+@media (max-width: 600px) { .pick-grid { grid-template-columns: 1fr 1fr; } dialog { padding: 14px; } }
+.dlg-head h2 { font-size: 1.15rem; }
