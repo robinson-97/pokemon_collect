@@ -59,7 +59,7 @@ const pos = n => (typeof n === 'number' && n > 0 ? n : null);
 
 // Prijzen per bron. TCGplayer (USD): goedkoopste variant. Cardmarket (EUR): laagste
 // prijs in elke staat ('low') en laagste prijs voor Excellent of beter ('lowEx').
-function slimCard(c) {
+export function slimCard(c) {
   const cp = c.cardmarket?.prices;
   return {
     id: c.id,
@@ -98,4 +98,17 @@ export async function diagnose(setId) {
   } catch (e) {
     return `Geen verbinding: ${e.message} (na ${Date.now() - t0} ms)`;
   }
+}
+
+// Zoekt kaarten op naam in álle sets (voor de scanner). Geeft {card, set} met de set-gegevens erbij.
+export async function searchCardsByName(name) {
+  const clean = String(name).replace(/["\\]/g, '').trim();
+  if (clean.length < 3) return [];
+  const res = await get('/cards', {
+    q: `name:"${clean}"`,
+    select: 'id,name,number,rarity,supertype,types,images,set',
+    orderBy: '-set.releaseDate',
+    pageSize: 40,
+  });
+  return res.data.map(c => ({ card: slimCard(c), set: c.set }));
 }

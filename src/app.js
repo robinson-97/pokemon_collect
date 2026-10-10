@@ -1,8 +1,8 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=14';
-import { fetchSetPrices, diagnosePrices } from './prices.js?v=14';
-import { openScanner, initScanner } from './scanner.js?v=14';
-import * as store from './store.js?v=14';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices, effectiveSource } from './calc.js?v=14';
+import { fetchSets, fetchSetCards, diagnose, searchCardsByName } from './api.js?v=15';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=15';
+import { openScanner, initScanner } from './scanner.js?v=15';
+import * as store from './store.js?v=15';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices, effectiveSource } from './calc.js?v=15';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -438,6 +438,7 @@ $('#btn-scan').onclick = () => openScanner({
   },
   // Eigen sets komen uit de cache; andere sets worden alleen opgehaald om te zoeken.
   getCards: async set => (store.isTracked(set.id) ? (await loadCards(set.id)).cards : fetchSetCards(set.id)),
+  searchByName: searchCardsByName,
   ownedMap: setId => store.ownedMap(setId),
   addSet: set => store.addSet(set),
   setOwned: (setId, cardId, cond) => store.setOwned(setId, cardId, cond),

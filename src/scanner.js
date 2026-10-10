@@ -1,6 +1,6 @@
 // Kaartscanner: camera -> kaartnummer en naam lezen (OCR in de browser) -> kaart zoeken -> bevestigen en toevoegen.
-import { parseCardNumber, cleanName, findCandidates, parseManual } from './scan.js?v=14';
-import { CONDITIONS } from './calc.js?v=14';
+import { parseCardNumber, cleanName, findCandidates, parseManual } from './scan.js?v=15';
+import { CONDITIONS } from './calc.js?v=15';
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -126,6 +126,7 @@ async function search(parsed, name, readLine) {
     parsed, name, trackedSets: tracked,
     otherSets: parsed?.den ? (await ctx.otherSets()) : [],
     getCards: s => ctx.getCards(s),
+    searchByName: ctx.searchByName,
   });
   if (!found.length) { status(`${readLine}. Geen kaart gevonden. Probeer opnieuw of typ het nummer (bijv. 25/165).`, 'warn'); return; }
   status(`${readLine}. Klopt dit? Kies de staat en voeg toe.`);
@@ -140,7 +141,7 @@ function renderResults(found) {
       <img src="${esc(f.card.small || f.card.large)}" alt="${esc(f.card.name)}">
       <div class="scan-hit-info">
         <b>${esc(f.card.number)} ${esc(f.card.name)}</b>
-        <span class="muted small">${esc(f.set.name)}${f.tracked ? '' : ' · set staat nog niet in je lijst, wordt toegevoegd'}</span>
+        <span class="muted small">${esc(f.set.name)}${f.tracked ? '' : ' · nieuwe set, wordt automatisch aan je sets toegevoegd'}</span>
         <span class="small">${esc(ctx.priceText(f.card, f.tracked))}</span>
         ${cur ? `<span class="small ok">Al in bezit (${esc(cur)})</span>` : ''}
         <div class="conds" role="group" aria-label="Staat">${CONDITIONS.map(k => `<button data-c="${k.code}" class="${(cur || 'NM') === k.code ? 'on' : ''}" title="${esc(k.nl)}">${k.code}</button>`).join('')}</div>

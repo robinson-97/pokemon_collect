@@ -59,3 +59,16 @@ test('handmatige invoer', () => {
   assert.equal(parseManual('Pikachu').parsed, null);
   assert.equal(parseManual('Pikachu').name, 'Pikachu');
 });
+
+test('zoeken op naam in alle sets als niets in je eigen sets staat', async () => {
+  const searchByName = async () => [
+    { card: { id: 'sv1-25', name: 'Spidops', number: '25' }, set: sets.other },
+    { card: { id: 'x-9', name: 'Spidops', number: '9' }, set: { id: 'x', name: 'X', printedTotal: 50, total: 50 } },
+  ];
+  const r = await findCandidates({ parsed: null, name: 'Spidops', trackedSets: [sets.s151], getCards, searchByName });
+  assert.equal(r.length, 2); assert.equal(r[0].tracked, false);
+  const r2 = await findCandidates({ parsed: { prefix: '', num: '25', den: null }, name: 'Spidops', trackedSets: [sets.s151], getCards: async () => [], searchByName });
+  assert.deepEqual(r2.map(x => x.card.id), ['sv1-25']);
+  const r3 = await findCandidates({ parsed: null, name: 'Spidops', trackedSets: [sets.other], getCards, searchByName });
+  assert.equal(r3[0].tracked, true); // staat al in je eigen sets
+});

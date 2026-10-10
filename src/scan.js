@@ -50,7 +50,7 @@ const setMatchesTotal = (set, den) => !den || String(set.printedTotal) === Strin
 
 // Zoekt kaarten bij een gelezen nummer (en eventueel naam).
 // trackedSets: sets die de gebruiker spaart; otherSets: alle overige sets; getCards(set) -> kaarten.
-export async function findCandidates({ parsed, name, trackedSets, otherSets = [], getCards, maxOtherSets = 6 }) {
+export async function findCandidates({ parsed, name, trackedSets, otherSets = [], getCards, searchByName, maxOtherSets = 6 }) {
   const out = [];
   const scoreOf = card => 1 + (name ? similarity(card.name, name) : 0);
   async function scan(sets, tracked) {
@@ -68,6 +68,17 @@ export async function findCandidates({ parsed, name, trackedSets, otherSets = []
   await scan(tracked, true);
   // Alleen buiten je eigen sets zoeken als daar niets is gevonden en het totaal bekend is.
   if (!out.length && parsed?.den) await scan(otherSets.filter(s => setMatchesTotal(s, parsed.den)).slice(0, maxOtherSets), false);
+  // Nog niets? Zoek op naam in alle sets (ook als het nummer onleesbaar was of de set nog niet bekend is).
+  if (!out.length && name && searchByName) {
+    let hits = [];
+    try { hits = await searchByName(name); } catch {}
+    const trackedIds = new Set(trackedSets.map(s => s.id));
+    for (const { card, set } of hits) {
+      if (parsed && !sameNumber(card, parsed)) continue;
+      if (parsed?.den && !setMatchesTotal(set, parsed.den)) continue;
+      out.push({ card, set, tracked: trackedIds.has(set.id), score: similarity(card.name, name) + (parsed ? 1 : 0) });
+    }
+  }
   return out.sort((a, b) => b.score - a.score || Number(b.tracked) - Number(a.tracked)).slice(0, 5);
 }
 
