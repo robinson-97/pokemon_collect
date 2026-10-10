@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokémon Collectie</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="#/" class="brand">Pokémon Collectie</a>
+    <div class="topbar-actions">
+      <button id="btn-backup" class="btn ghost" title="Back-up maken of terugzetten">Back-up</button>
+      <button id="btn-add" class="btn primary">+ Set toevoegen</button>
+    </div>
+  </header>
+  <main id="app"></main>
+
+  <dialog id="dlg-add">
+    <form method="dialog" class="dlg-head">
+      <h2>Kies de sets die je spaart</h2>
+      <button class="btn ghost" aria-label="Sluiten">✕</button>
+    </form>
+    <input id="set-search" type="search" placeholder="Zoek op naam of serie…" autocomplete="off">
+    <div id="set-list" class="set-list"></div>
+  </dialog>
+
+  <dialog id="dlg-card" class="lightbox">
+    <div id="card-detail"></div>
+  </dialog>
+
+  <dialog id="dlg-backup">
+    <form method="dialog" class="dlg-head">
+      <h2>Back-up</h2>
+      <button class="btn ghost" aria-label="Sluiten">✕</button>
+    </form>
+    <p>Je gegevens staan alleen in deze browser. Maak af en toe een back-up.</p>
+    <div class="row">
+      <button id="btn-export" class="btn primary">Downloaden</button>
+      <label class="btn">Terugzetten<input id="file-import" type="file" accept="application/json" hidden></label>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
