@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarize } from '../src/calc.js';
+import { summarize, priceFor, withPrices } from '../src/calc.js';
 import { lowestPrice, byNumber } from '../src/api.js';
 
 const cards = [
@@ -24,4 +24,20 @@ test('lowestPrice kiest goedkoopste variant, valt terug op market', () => {
 test('kaartnummers sorteren natuurlijk', () => {
   const sorted = [{ number: '10' }, { number: '2' }, { number: 'TG01' }, { number: '1' }].sort(byNumber);
   assert.deepEqual(sorted.map(c => c.number), ['1', '2', '10', 'TG01']);
+});
+
+const card = { tcg: { low: 2, market: 3 }, cm: { low: 0.5, lowEx: 0.9 } };
+test('priceFor Cardmarket kiest op staat', () => {
+  assert.equal(priceFor(card, 'cm', 'NM'), 0.9);
+  assert.equal(priceFor(card, 'cm', 'LP'), 0.9);
+  assert.equal(priceFor(card, 'cm', 'HP'), 0.5);
+  assert.equal(priceFor(card, 'cm', null, 'NM'), 0.9);
+  assert.equal(priceFor(card, 'cm', null, 'any'), 0.5);
+  assert.equal(priceFor({ cm: { low: 0.5, lowEx: null } }, 'cm', 'NM'), 0.5);
+  assert.equal(priceFor({ cm: null }, 'cm', 'NM'), null);
+});
+test('priceFor TCGplayer en withPrices', () => {
+  assert.equal(priceFor(card, 'tcg', 'HP'), 2);
+  assert.equal(priceFor({ tcg: { low: null, market: 3 } }, 'tcg', null), 3);
+  assert.equal(summarize(withPrices([{ id: 'a', ...card }], 'cm', 'any'), new Set()).costToComplete, 0.5);
 });

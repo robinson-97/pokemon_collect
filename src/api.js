@@ -1,6 +1,6 @@
 // Dunne laag rond de pokemontcg.io v2 API (gratis, levert o.a. TCGplayer-prijzen).
 const BASE = 'https://api.pokemontcg.io/v2';
-const CARD_FIELDS = 'id,name,number,rarity,supertype,types,images,tcgplayer';
+const CARD_FIELDS = 'id,name,number,rarity,supertype,types,images,tcgplayer,cardmarket';
 
 async function get(path, params) {
   const url = `${BASE}${path}?${new URLSearchParams(params)}`;
@@ -45,17 +45,22 @@ export async function fetchSetCards(setId) {
 
 // Laagste prijs: goedkoopste TCGplayer-variant (normal/holo/reverse…), op basis van 'low',
 // met 'market' als terugval. Geeft null als er geen prijs is.
-export function lowestPrice(prices) {
+export function lowestPrice(prices, field = 'low') {
   if (!prices) return null;
   let best = null;
   for (const v of Object.values(prices)) {
-    const p = v.low ?? v.market;
+    const p = field === 'low' ? v.low ?? v.market : v[field];
     if (typeof p === 'number' && p > 0 && (best === null || p < best)) best = p;
   }
   return best;
 }
 
+const pos = n => (typeof n === 'number' && n > 0 ? n : null);
+
+// Prijzen per bron. TCGplayer (USD): goedkoopste variant. Cardmarket (EUR): laagste
+// prijs in elke staat ('low') en laagste prijs voor Excellent of beter ('lowEx').
 function slimCard(c) {
+  const cp = c.cardmarket?.prices;
   return {
     id: c.id,
     name: c.name,
@@ -65,9 +70,16 @@ function slimCard(c) {
     types: c.types || [],
     small: c.images?.small,
     large: c.images?.large,
-    price: lowestPrice(c.tcgplayer?.prices),
-    url: c.tcgplayer?.url || null,
-    priceDate: c.tcgplayer?.updatedAt || null,
+    tcg: {
+      low: lowestPrice(c.tcgplayer?.prices),
+      market: lowestPrice(c.tcgplayer?.prices, 'market'),
+      url: c.tcgplayer?.url || null,
+      at: c.tcgplayer?.updatedAt || null,
+    },
+    cm: cp ? {
+      low: pos(cp.lowPrice), lowEx: pos(cp.lowPriceExPlus), trend: pos(cp.trendPrice), avg7: pos(cp.avg7),
+      url: c.cardmarket.url || null, at: c.cardmarket.updatedAt || null,
+    } : null,
   };
 }
 

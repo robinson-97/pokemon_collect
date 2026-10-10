@@ -121,3 +121,18 @@ dialog::backdrop { background: #000a; }
   border: 1px solid var(--line); background: transparent; color: var(--text); }
 .conds button.on { background: var(--ok); border-color: var(--ok); color: #fff; }
 .conds button[data-c=""].on { background: var(--text); border-color: var(--text); color: var(--bg); }
+
+/* prijzen */
+.card-info .price { color: var(--text); font-weight: 700; font-size: .95rem; white-space: nowrap; }
+.card-info .price small { font-weight: 500; color: var(--muted); font-size: .72rem; }
+.card-info .price .none { font-weight: 400; color: var(--muted); font-size: .8rem; }
+.topbar .seg button { padding: 6px 10px; font-size: .85rem; }
+.want { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+.want select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+.bigprice { font-size: 1.8rem; font-weight: 800; margin: 10px 0 8px; font-variant-numeric: tabular-nums; }
+.bigprice small { display: block; font-size: .8rem; font-weight: 400; color: var(--muted); }
+.prices { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.prices th { text-align: left; padding: 8px 0 4px; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.prices td { padding: 3px 0; } .prices td:last-child { text-align: right; }
+.prices tr.hl td { font-weight: 700; color: var(--accent); }
+@media (max-width: 600px) { .topbar { flex-wrap: wrap; gap: 6px; } }

@@ -1,11 +1,13 @@
-import { fetchSets, fetchSetCards } from './api.js?v=5';
-import * as store from './store.js?v=5';
-import { summarize, usd, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS } from './calc.js?v=5';
+import { fetchSets, fetchSetCards } from './api.js?v=6';
+import * as store from './store.js?v=6';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=6';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const price = p => (p == null ? '—' : usd.format(p));
+const prefs = () => store.prefs();
+const price = (p, source = prefs().source) => (p == null ? '—' : SOURCES[source].fmt.format(p));
+let repaint = null; // hertekent prijzen op de huidige setpagina
 
 function toast(msg) {
   const t = $('#toast');
@@ -31,6 +33,7 @@ async function loadCards(setId, { force = false } = {}) {
 
 /* ---------- Overzicht van gekozen sets ---------- */
 async function renderHome() {
+  repaint = null;
   const sets = store.trackedSets();
   if (!sets.length) {
     app.innerHTML = `<section class="empty"><h1>Welkom!</h1>
@@ -49,7 +52,7 @@ async function renderHome() {
     const tile = app.querySelector(`.set-tile[data-id="${CSS.escape(s.id)}"]`);
     try {
       const { cards } = await loadCards(s.id);
-      const sum = summarize(cards, store.ownedMap(s.id));
+      const sum = summarize(withPrices(cards, prefs().source, prefs().want), store.ownedMap(s.id));
       tile.querySelector('.bar span').style.width = sum.percent + '%';
       tile.querySelector('.stats').innerHTML =
         `<b>${sum.owned}/${sum.total}</b> · ${sum.percent}%<br>Nog nodig: <b>${price(sum.costToComplete)}</b>`;
@@ -63,6 +66,7 @@ async function renderHome() {
 let view = { filter: 'all', q: '', type: '' };
 
 async function renderSet(setId) {
+  repaint = null;
   const set = store.trackedSets().find(s => s.id === setId);
   if (!set) { location.hash = '#/'; return; }
   view = { filter: 'all', q: '', type: '' };
@@ -86,6 +90,8 @@ async function renderSet(setId) {
         <button data-f="owned">In bezit</button>
       </div>
       <input id="q" type="search" placeholder="Zoek kaart of nummer…">
+      <label class="want" title="Cardmarket kent geen prijs per staat. Dit bepaalt waarvoor ontbrekende kaarten geprijsd worden.">Ontbrekende kaarten:
+        <select id="want"><option value="NM">Excellent of beter</option><option value="any">Elke staat (goedkoopst)</option></select></label>
       <button class="btn ghost" id="refresh" title="Prijzen opnieuw ophalen">↻ Prijzen</button>
       <button class="btn ghost danger" id="remove">Set verwijderen</button>
     </div>
@@ -103,16 +109,20 @@ async function renderSet(setId) {
       </button>
       <div class="card-info">
         <span class="name"><span class="num">${esc(c.number)}</span> ${esc(c.name)}</span>
-        <span class="price">${price(c.price)}</span>
+        <span class="price"></span>
       </div>
     </article>`).join('');
 
   const byId = new Map(cards.map(c => [c.id, c]));
   const fmtDate = t => new Date(t).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' });
-  $('#updated').textContent = `Laagste TCGplayer-prijs (USD), opgehaald ${fmtDate(data.at)}. Tik op een kaart om te vergroten. Houd een kaart ingedrukt om hem als in bezit te markeren.`;
+  const hint = 'Tik op een kaart om te vergroten. Houd een kaart ingedrukt om hem als in bezit te markeren.';
 
   function paint() {
-    const sum = summarize(cards, owned);
+    const { source, want } = prefs();
+    $('#want').value = want;
+    $('#want').hidden = source !== 'cm';
+    const sum = summarize(withPrices(cards, source, want), owned);
+    $('#updated').textContent = `Laagste ${SOURCES[source].name}-prijzen, opgehaald ${fmtDate(data.at)}. ${hint}`;
     $('#summary').innerHTML = `
       <div class="bar big"><span style="width:${sum.percent}%"></span></div>
       <div class="sum-row"><span><b>${sum.owned}</b> / ${sum.total} kaarten (${sum.percent}%)</span>
@@ -125,6 +135,8 @@ async function renderSet(setId) {
       el.classList.toggle('owned', has);
       el.querySelector('.badge').textContent = has ? `✓ ${owned.get(c.id)}` : '';
       el.dataset.cond = has ? owned.get(c.id) : '';
+      const p = priceFor(c, source, has ? owned.get(c.id) : null, want);
+      el.querySelector('.price').innerHTML = p == null ? '<span class="none">geen prijs</span>' : `<small>vanaf</small> ${price(p, source)}`;
       const show = (view.filter === 'all' || (view.filter === 'owned') === has) &&
         (!view.type || categoryOf(c) === view.type) &&
         (!q || c.name.toLowerCase().includes(q) || c.number.toLowerCase() === q.replace(/^#/, ''));
@@ -199,7 +211,25 @@ async function renderSet(setId) {
     for (const x of $('#types').children) x.classList.toggle('on', x.dataset.t === view.type);
     paint();
   };
+  $('#want').onchange = e => { store.setPref('want', e.target.value); paint(); };
+  repaint = paint;
   paint();
+}
+
+function priceBlock(c, cond) {
+  const { source, want } = prefs();
+  const mine = priceFor(c, source, cond, want);
+  const row = (label, val, fmt, strong) => val == null ? '' : `<tr${strong ? ' class="hl"' : ''}><td>${label}</td><td>${fmt.format(val)}</td></tr>`;
+  const cm = c.cm, tcg = c.tcg, E = SOURCES.cm.fmt, U = SOURCES.tcg.fmt;
+  return `
+    <p class="bigprice">${price(mine, source)} <small>laagste prijs${source === 'cm' ? (cond ? ` voor jouw staat (${cond})` : '') : ' (Near Mint)'} · ${SOURCES[source].name}</small></p>
+    <table class="prices">
+      <tr><th colspan="2">Cardmarket${cm?.url ? ` · <a href="${esc(cm.url)}" target="_blank" rel="noopener">openen</a>` : ''}</th></tr>
+      ${cm ? row('Laagste, elke staat', cm.low, E, source === 'cm' && mine === cm.low) + row('Laagste, Excellent of beter', cm.lowEx, E, source === 'cm' && mine === cm.lowEx && cm.lowEx !== cm.low) + row('Trend', cm.trend, E) + row('Gemiddelde 7 dagen', cm.avg7, E) : '<tr><td colspan="2" class="muted">Geen prijs bekend</td></tr>'}
+      <tr><th colspan="2">TCGplayer${tcg.url ? ` · <a href="${esc(tcg.url)}" target="_blank" rel="noopener">openen</a>` : ''}</th></tr>
+      ${tcg.low != null || tcg.market != null ? row('Laagste', tcg.low, U, source === 'tcg') + row('Marktprijs', tcg.market, U) : '<tr><td colspan="2" class="muted">Geen prijs bekend</td></tr>'}
+    </table>
+    <p class="muted small">Prijzen per staat (LP, MP, HP) bestaan niet. Voor jouw staat toon ik de dichtstbijzijnde bekende prijs.</p>`;
 }
 
 function openCard(c, owned, setCond) {
@@ -213,7 +243,7 @@ function openCard(c, owned, setCond) {
       <div class="detail-info">
         <h3><span class="num">${esc(c.number)}</span> ${esc(c.name)}</h3>
         <p class="muted">${esc(c.rarity)}</p>
-        <p>Laagste prijs: <b>${link(price(c.price))}</b></p>
+        ${priceBlock(c, cond)}
         <p class="label">Mijn exemplaar</p>
         <div class="conds" role="group" aria-label="Staat van de kaart">
           <button data-c="" class="${cond ? '' : 'on'}">Niet in bezit</button>
@@ -297,3 +327,16 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 route();
+
+/* ---------- Prijsbron kiezen ---------- */
+function drawSource() {
+  const cur = prefs().source;
+  for (const b of $('#src').children) b.classList.toggle('on', b.dataset.s === cur);
+}
+$('#src').onclick = e => {
+  const sSel = e.target.closest('button')?.dataset.s; if (!sSel) return;
+  store.setPref('source', sSel);
+  drawSource();
+  repaint ? repaint() : route();
+};
+drawSource();

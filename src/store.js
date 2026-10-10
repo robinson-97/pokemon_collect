@@ -1,9 +1,11 @@
 // Opslag in localStorage: gekozen sets, bezit en een cache van kaartdata.
 const KEY = 'pokemon-collect/v1';
-const CACHE_PREFIX = 'pokemon-collect/cards-v2/';
+const CACHE_PREFIX = 'pokemon-collect/cards-v3/';
 const CACHE_TTL = 24 * 3600 * 1000; // prijzen na 24 uur verversen
 
 export const DEFAULT_CONDITION = 'NM';
+// source: 'cm' (Cardmarket, EUR) of 'tcg' (TCGplayer, USD); want: staat waarvoor ontbrekende kaarten geprijsd worden.
+const DEFAULT_PREFS = { source: 'cm', want: 'NM' };
 
 // Bezit is {setId: {kaartId: staat}}. Oudere versies bewaarden alleen een lijst kaart-id's.
 function normalizeOwned(owned) {
@@ -19,13 +21,16 @@ const state = load();
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.sets) && s.owned) return { sets: s.sets, owned: normalizeOwned(s.owned) };
+    if (s && Array.isArray(s.sets) && s.owned) return { sets: s.sets, owned: normalizeOwned(s.owned), prefs: { ...DEFAULT_PREFS, ...s.prefs } };
   } catch {}
-  return { sets: [], owned: {} };
+  return { sets: [], owned: {}, prefs: { ...DEFAULT_PREFS } };
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
 }
+
+export const prefs = () => state.prefs;
+export function setPref(key, value) { state.prefs[key] = value; save(); }
 
 export const trackedSets = () => state.sets;
 export const isTracked = id => state.sets.some(s => s.id === id);

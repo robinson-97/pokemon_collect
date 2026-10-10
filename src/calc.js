@@ -12,7 +12,6 @@ export function summarize(cards, owned) {
   };
 }
 
-// TCGplayer-prijzen zijn in US-dollars.
 export const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 // Filtercategorie van een kaart: Pokémon-type (Fire, Water, …), of Trainer / Energy.
@@ -39,3 +38,25 @@ export const CONDITIONS = [
   { code: 'HP', nl: 'Heavily Played', hint: 'Veel slijtage' },
   { code: 'DMG', nl: 'Damaged', hint: 'Beschadigd' },
 ];
+
+export const eur = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+export const SOURCES = {
+  cm: { name: 'Cardmarket', fmt: eur },
+  tcg: { name: 'TCGplayer', fmt: usd },
+};
+
+// Laagste prijs voor een kaart. cond = staat van je kaart, of null voor een kaart die je nog mist
+// (dan geldt 'want': 'NM' = Excellent of beter, 'any' = goedkoopste exemplaar in welke staat dan ook).
+// Cardmarket kent geen prijs per staat; NM en LP krijgen de 'Excellent of beter'-prijs, MP/HP/DMG de laagste prijs.
+// TCGplayer-prijzen gelden voor Near Mint en zijn niet per staat beschikbaar.
+export function priceFor(card, source, cond, want = 'NM') {
+  if (source === 'tcg') return card.tcg?.low ?? card.tcg?.market ?? null;
+  const cm = card.cm;
+  if (!cm) return null;
+  const c = cond || want;
+  const excellentPlus = c === 'NM' || c === 'LP';
+  return (excellentPlus ? cm.lowEx ?? cm.low : cm.low) ?? null;
+}
+
+// Geeft kaarten met een 'price' voor de gekozen bron, klaar voor summarize().
+export const withPrices = (cards, source, want) => cards.map(c => ({ ...c, price: priceFor(c, source, null, want) }));
