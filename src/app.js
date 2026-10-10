@@ -1,13 +1,14 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=12';
-import { fetchSetPrices, diagnosePrices } from './prices.js?v=12';
-import * as store from './store.js?v=12';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=12';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=13';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=13';
+import * as store from './store.js?v=13';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices, effectiveSource } from './calc.js?v=13';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const prefs = () => store.prefs();
 const price = (p, source = prefs().source) => (p == null ? '—' : SOURCES[source].fmt.format(p));
+let shownSource = null; // bron die op de huidige pagina echt getoond wordt
 let repaint = null; // hertekent prijzen op de huidige setpagina
 
 function toast(msg) {
@@ -71,11 +72,12 @@ async function renderHome() {
     const tile = app.querySelector(`.set-tile[data-id="${CSS.escape(s.id)}"]`);
     try {
       const { cards } = await loadCards(s.id);
-      const sum = summarize(withPrices(cards, prefs().source, prefs().want), store.ownedMap(s.id));
+      const src = effectiveSource(cards, prefs().source, prefs().want);
+      const sum = summarize(withPrices(cards, src, prefs().want), store.ownedMap(s.id));
       tile.querySelector('.bar span').style.width = sum.percent + '%';
       tile.querySelector('.stats').innerHTML =
         `<b>${sum.owned}/${sum.total}</b> · ${sum.percent}%<br>` + (store.getCachedPrices(s.id)
-          ? `Nog nodig: <b>${price(sum.costToComplete)}</b>` : `<span class="small">Open de set om prijzen te laden</span>`);
+          ? `Nog nodig: <b>${price(sum.costToComplete, src)}</b>` : `<span class="small">Open de set om prijzen te laden</span>`);
     } catch {
       tile.querySelector('.stats').textContent = 'Kon kaarten niet laden';
     }
@@ -146,7 +148,9 @@ async function renderSet(setId) {
   const hint = 'Tik op een kaart om te vergroten. Houd een kaart ingedrukt om hem als in bezit te markeren.';
 
   function paint() {
-    const { source, want } = prefs();
+    const { source: pref, want } = prefs();
+    const source = shownSource = effectiveSource(cards, pref, want);
+    const switched = source !== pref;
     $('#want').value = want;
     $('.want').hidden = source !== 'cm' || !cards.some(c => c.cm?.lowEx != null);
     const sum = summarize(withPrices(cards, source, want), owned);
@@ -154,9 +158,12 @@ async function renderSet(setId) {
     const hasTcg = cards.filter(c => c.tcg && (c.tcg.url || c.tcg.low != null)).length;
     const hasCm = cards.filter(c => c.cm).length;
     const info = $('#priceinfo');
-    info.hidden = priced > 0 || loadingPrices;
+    info.hidden = (priced > 0 && !switched) || loadingPrices;
     info.innerHTML = `<span></span> <button class="btn" id="diag">Diagnose</button><pre id="diag-out" hidden></pre>`;
-    info.firstChild.textContent = `Geen ${SOURCES[source].name}-prijzen gevonden voor deze set (TCGplayer: ${hasTcg}/${cards.length}, Cardmarket: ${hasCm}/${cards.length}).` +
+    if (switched) {
+      info.firstChild.textContent = `Voor deze set zijn geen ${SOURCES[pref].name}-prijzen beschikbaar. Je ziet ${SOURCES[source].name}-prijzen${source === 'cm' ? ' (alle talen)' : ''}.`;
+      $('#diag').remove(); $('#diag-out').remove();
+    } else info.firstChild.textContent = `Geen ${SOURCES[source].name}-prijzen gevonden voor deze set (TCGplayer: ${hasTcg}/${cards.length}, Cardmarket: ${hasCm}/${cards.length}).` +
       ((source === 'cm' ? hasTcg : hasCm) ? ` Probeer de andere prijsbron bovenaan.` : ` Kies Opties → Prijzen verversen, of tik op Diagnose.`);
     const diagBtn = $('#diag');
     if (diagBtn) diagBtn.onclick = async () => {
@@ -167,7 +174,7 @@ async function renderSet(setId) {
     $('#summary').innerHTML = `
       <div class="bar big"><span style="width:${sum.percent}%"></span></div>
       <div class="sum-row"><span><b>${sum.owned}</b> / ${sum.total} kaarten (${sum.percent}%)</span>
-      <span>Nog nodig: <b class="cost">${price(sum.costToComplete)}</b></span></div>
+      <span>Nog nodig: <b class="cost">${price(sum.costToComplete, source)}</b></span></div>
       ${sum.withoutPrice ? `<p class="muted small">${sum.withoutPrice} ontbrekende kaart(en) zonder prijs zijn niet meegeteld.</p>` : ''}
       ${sum.missing === 0 ? `<p class="done">🎉 Set compleet!</p>` : ''}`;
     const q = view.q.toLowerCase();
@@ -271,7 +278,8 @@ async function renderSet(setId) {
 }
 
 function priceBlock(c, cond) {
-  const { source, want } = prefs();
+  const { want } = prefs();
+  const source = shownSource ?? prefs().source;
   const mine = priceFor(c, source, cond, want);
   const row = (label, val, fmt, strong) => val == null ? '' : `<tr${strong ? ' class="hl"' : ''}><td>${label}</td><td>${fmt.format(val)}</td></tr>`;
   const cm = c.cm, tcg = c.tcg, E = SOURCES.cm.fmt, U = SOURCES.tcg.fmt;

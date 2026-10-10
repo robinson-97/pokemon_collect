@@ -60,3 +60,12 @@ export function priceFor(card, source, cond, want = 'NM') {
 
 // Geeft kaarten met een 'price' voor de gekozen bron, klaar voor summarize().
 export const withPrices = (cards, source, want) => cards.map(c => ({ ...c, price: priceFor(c, source, null, want) }));
+
+// Heeft de gekozen bron voor deze set helemaal geen prijzen (bijv. promosets zonder TCGplayer-aanbod),
+// maar de andere wel? Dan tonen we de andere bron.
+export function effectiveSource(cards, pref, want) {
+  const count = src => cards.filter(c => priceFor(c, src, null, want) != null).length;
+  if (count(pref) > 0) return pref;
+  const other = pref === 'cm' ? 'tcg' : 'cm';
+  return count(other) > 0 ? other : pref;
+}
