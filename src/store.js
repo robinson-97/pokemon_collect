@@ -1,5 +1,6 @@
 // Opslag in localStorage: gekozen sets, bezit en een cache van kaartdata.
 const KEY = 'pokemon-collect/v1';
+const PRICE_PREFIX = 'pokemon-collect/prices-v1/';
 const CACHE_PREFIX = 'pokemon-collect/cards-v3/';
 const CACHE_TTL = 24 * 3600 * 1000; // prijzen na 24 uur verversen
 
@@ -44,7 +45,7 @@ export function addSet(set) {
 export function removeSet(id) {
   state.sets = state.sets.filter(s => s.id !== id);
   delete state.owned[id];
-  try { localStorage.removeItem(CACHE_PREFIX + id); } catch {}
+  try { localStorage.removeItem(CACHE_PREFIX + id); localStorage.removeItem(PRICE_PREFIX + id); } catch {}
   save();
 }
 
@@ -67,6 +68,20 @@ export function getCachedCards(setId) {
 }
 export function setCachedCards(setId, cards) {
   try { localStorage.setItem(CACHE_PREFIX + setId, JSON.stringify({ at: Date.now(), cards })); } catch {}
+}
+
+export function getCachedPrices(setId) {
+  try {
+    const c = JSON.parse(localStorage.getItem(PRICE_PREFIX + setId));
+    if (c && c.map) return { map: c.map, fresh: Date.now() - c.at < CACHE_TTL, at: c.at };
+  } catch {}
+  return null;
+}
+export function setCachedPrices(setId, map) {
+  try { localStorage.setItem(PRICE_PREFIX + setId, JSON.stringify({ at: Date.now(), map })); } catch {}
+}
+export function clearCachedPrices(setId) {
+  try { localStorage.removeItem(PRICE_PREFIX + setId); } catch {}
 }
 
 export const exportData = () => JSON.stringify(state, null, 2);

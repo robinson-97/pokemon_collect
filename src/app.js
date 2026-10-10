@@ -1,6 +1,7 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=8';
-import * as store from './store.js?v=8';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=8';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=9';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=9';
+import * as store from './store.js?v=9';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=9';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -18,17 +19,33 @@ function toast(msg) {
 }
 
 /* ---------- Kaarten laden (cache + verversen) ---------- */
+// Prijzen komen apart binnen (TCGdex) en worden over de kaarten heen gelegd.
+function applyPrices(cards, map = {}) {
+  for (const c of cards) {
+    const p = map[c.id];
+    c.tcg = { low: null, market: null, ...c.tcg, ...p?.tcg };
+    c.cm = p?.cm ? { ...p.cm, url: `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(`${c.name} ${c.number}`)}` } : null;
+  }
+}
 async function loadCards(setId, { force = false } = {}) {
   const cached = store.getCachedCards(setId);
-  if (cached && cached.fresh && !force) return { cards: cached.cards, at: cached.at };
-  try {
-    const cards = await fetchSetCards(setId);
-    store.setCachedCards(setId, cards);
-    return { cards, at: Date.now() };
-  } catch (e) {
-    if (cached) { toast('Kon prijzen niet verversen, oude data getoond'); return { cards: cached.cards, at: cached.at }; }
-    throw e;
+  let res;
+  if (cached && cached.fresh && !force) res = { cards: cached.cards, at: cached.at };
+  else {
+    try {
+      const cards = await fetchSetCards(setId);
+      store.setCachedCards(setId, cards);
+      res = { cards, at: Date.now() };
+    } catch (e) {
+      if (!cached) throw e;
+      toast('Kon kaarten niet verversen, oude data getoond');
+      res = { cards: cached.cards, at: cached.at };
+    }
   }
+  const prices = store.getCachedPrices(setId);
+  applyPrices(res.cards, prices?.map);
+  res.pricesAt = prices?.at ?? null;
+  return res;
 }
 
 /* ---------- Overzicht van gekozen sets ---------- */
@@ -55,7 +72,8 @@ async function renderHome() {
       const sum = summarize(withPrices(cards, prefs().source, prefs().want), store.ownedMap(s.id));
       tile.querySelector('.bar span').style.width = sum.percent + '%';
       tile.querySelector('.stats').innerHTML =
-        `<b>${sum.owned}/${sum.total}</b> · ${sum.percent}%<br>Nog nodig: <b>${price(sum.costToComplete)}</b>`;
+        `<b>${sum.owned}/${sum.total}</b> · ${sum.percent}%<br>` + (store.getCachedPrices(s.id)
+          ? `Nog nodig: <b>${price(sum.costToComplete)}</b>` : `<span class="small">Open de set om prijzen te laden</span>`);
     } catch {
       tile.querySelector('.stats').textContent = 'Kon kaarten niet laden';
     }
@@ -75,6 +93,7 @@ async function renderSet(setId) {
   try { data = await loadCards(setId); }
   catch { app.innerHTML = `<p class="error">Kon de kaarten niet laden. <button class="btn" data-act="retry">Opnieuw</button></p>`; return; }
   const { cards } = data;
+  let pricesAt = data.pricesAt, loadingPrices = false;
   const owned = store.ownedMap(setId);
 
   app.innerHTML = `
@@ -101,6 +120,7 @@ async function renderSet(setId) {
       </div>
     </details>
     <div class="types" id="types"></div>
+    <p class="muted small" id="pricestatus" hidden></p>
     <div class="notice" id="priceinfo" hidden></div>
     <p class="muted small" id="updated"></p>
     <div class="card-grid" id="grid"></div>`;
@@ -126,22 +146,22 @@ async function renderSet(setId) {
   function paint() {
     const { source, want } = prefs();
     $('#want').value = want;
-    $('#want').hidden = source !== 'cm';
+    $('.want').hidden = source !== 'cm' || !cards.some(c => c.cm?.lowEx != null);
     const sum = summarize(withPrices(cards, source, want), owned);
     const priced = cards.filter(c => priceFor(c, source, null, want) != null).length;
     const hasTcg = cards.filter(c => c.tcg && (c.tcg.url || c.tcg.low != null)).length;
     const hasCm = cards.filter(c => c.cm).length;
     const info = $('#priceinfo');
-    info.hidden = priced > 0;
+    info.hidden = priced > 0 || loadingPrices;
     info.innerHTML = `<span></span> <button class="btn" id="diag">Diagnose</button><pre id="diag-out" hidden></pre>`;
-    info.firstChild.textContent = `De kaartendatabase gaf voor deze set geen ${SOURCES[source].name}-prijzen terug (TCGplayer-gegevens: ${hasTcg}/${cards.length}, Cardmarket-gegevens: ${hasCm}/${cards.length}).` +
-      ((source === 'cm' ? hasTcg : hasCm) ? ` Probeer de andere prijsbron bovenaan.` : ` Probeer later "Prijzen verversen" onder Opties.`);
+    info.firstChild.textContent = `Geen ${SOURCES[source].name}-prijzen gevonden voor deze set (TCGplayer: ${hasTcg}/${cards.length}, Cardmarket: ${hasCm}/${cards.length}).` +
+      ((source === 'cm' ? hasTcg : hasCm) ? ` Probeer de andere prijsbron bovenaan.` : ` Kies Opties → Prijzen verversen, of tik op Diagnose.`);
     const diagBtn = $('#diag');
     if (diagBtn) diagBtn.onclick = async () => {
       const out = $('#diag-out'); out.hidden = false; out.textContent = 'Bezig…';
-      out.textContent = await diagnose(setId);
+      out.textContent = (await diagnose(setId)) + '\n\n' + (await diagnosePrices(set));
     };
-    $('#updated').textContent = `Prijzen: ${SOURCES[source].name}, bij ${priced} van ${cards.length} kaarten bekend. Opgehaald ${fmtDate(data.at)}. ${hint}`;
+    $('#updated').textContent = `Prijzen: ${SOURCES[source].name} via TCGdex, bij ${priced} van ${cards.length} kaarten bekend${pricesAt ? ` (${fmtDate(pricesAt)})` : ''}. ${hint}`;
     $('#summary').innerHTML = `
       <div class="bar big"><span style="width:${sum.percent}%"></span></div>
       <div class="sum-row"><span><b>${sum.owned}</b> / ${sum.total} kaarten (${sum.percent}%)</span>
@@ -207,11 +227,7 @@ async function renderSet(setId) {
     paint();
   };
   $('#q').oninput = e => { view.q = e.target.value.trim(); paint(); };
-  $('#refresh').onclick = async () => {
-    $('#refresh').disabled = true;
-    try { await loadCards(setId, { force: true }); renderSet(setId); toast('Prijzen bijgewerkt'); }
-    catch { toast('Verversen mislukt'); $('#refresh').disabled = false; }
-  };
+  $('#refresh').onclick = () => { store.clearCachedPrices(setId); renderSet(setId); };
   $('#remove').onclick = () => {
     if (confirm(`"${set.name}" uit je lijst halen? Je bezit van deze set wordt gewist.`)) {
       store.removeSet(setId); location.hash = '#/';
@@ -233,6 +249,23 @@ async function renderSet(setId) {
   $('#want').onchange = e => { store.setPref('want', e.target.value); paint(); };
   repaint = paint;
   paint();
+
+  // Prijzen ophalen als ze ontbreken of ouder zijn dan 24 uur; kaarten blijven intussen zichtbaar.
+  const cachedPrices = store.getCachedPrices(setId);
+  if (!cachedPrices || !cachedPrices.fresh) {
+    loadingPrices = true; paint();
+    const status = $('#pricestatus');
+    status.hidden = false; status.textContent = 'Prijzen ophalen…';
+    try {
+      const { map } = await fetchSetPrices(set, cards, (d, t) => { if (status.isConnected) status.textContent = `Prijzen ophalen… ${d}/${t}`; });
+      if (Object.keys(map).length) { store.setCachedPrices(setId, map); pricesAt = Date.now(); }
+      applyPrices(cards, Object.keys(map).length ? map : cachedPrices?.map);
+    } catch {
+      if (status.isConnected) toast('Prijzen ophalen mislukt');
+    }
+    loadingPrices = false;
+    if (status.isConnected) { status.hidden = true; paint(); }
+  }
 }
 
 function priceBlock(c, cond) {
@@ -241,14 +274,14 @@ function priceBlock(c, cond) {
   const row = (label, val, fmt, strong) => val == null ? '' : `<tr${strong ? ' class="hl"' : ''}><td>${label}</td><td>${fmt.format(val)}</td></tr>`;
   const cm = c.cm, tcg = c.tcg, E = SOURCES.cm.fmt, U = SOURCES.tcg.fmt;
   return `
-    <p class="bigprice">${price(mine, source)} <small>laagste prijs${source === 'cm' ? (cond ? ` voor jouw staat (${cond})` : '') : ' (Near Mint)'} · ${SOURCES[source].name}</small></p>
+    <p class="bigprice">${price(mine, source)} <small>laagste prijs${source === 'cm' ? (cond && cm?.lowEx != null ? ` voor jouw staat (${cond})` : '') : ''} · ${SOURCES[source].name}</small></p>
     <table class="prices">
       <tr><th colspan="2">Cardmarket${cm?.url ? ` · <a href="${esc(cm.url)}" target="_blank" rel="noopener">openen</a>` : ''}</th></tr>
       ${cm ? row('Laagste, elke staat', cm.low, E, source === 'cm' && mine === cm.low) + row('Laagste, Excellent of beter', cm.lowEx, E, source === 'cm' && mine === cm.lowEx && cm.lowEx !== cm.low) + row('Trend', cm.trend, E) + row('Gemiddelde 7 dagen', cm.avg7, E) : '<tr><td colspan="2" class="muted">Geen prijs bekend</td></tr>'}
       <tr><th colspan="2">TCGplayer${tcg.url ? ` · <a href="${esc(tcg.url)}" target="_blank" rel="noopener">openen</a>` : ''}</th></tr>
       ${tcg.low != null || tcg.market != null ? row('Laagste', tcg.low, U, source === 'tcg') + row('Marktprijs', tcg.market, U) : '<tr><td colspan="2" class="muted">Geen prijs bekend</td></tr>'}
     </table>
-    <p class="muted small">Prijzen per staat (LP, MP, HP) bestaan niet. Voor jouw staat toon ik de dichtstbijzijnde bekende prijs.</p>`;
+    <p class="muted small">Een prijs per staat (LP, MP, HP) is niet beschikbaar. Je ziet de laagste prijs van alle aanbiedingen.</p>`;
 }
 
 function openCard(c, owned, setCond) {

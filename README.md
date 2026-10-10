@@ -4,9 +4,9 @@ Webapp om per set bij te houden welke Pokémon-kaarten je hebt en wat het nog ko
 
 - Kies zelf welke sets je spaart; alleen die staan in je overzicht
 - Alle kaarten van de set in hoge resolutie, met badge "✓ In bezit"
-- Laagste TCGplayer-prijs per kaart (USD) en totaal om de set te voltooien
+- Laagste prijs per kaart (Cardmarket € of TCGplayer $, via TCGdex) en totaal om de set te voltooien
 - Filter: alles / ontbreekt / in bezit, zoeken op naam of nummer
-- Data via [pokemontcg.io](https://pokemontcg.io); bezit staat in je browser (localStorage), met back-up/terugzetten
+- Kaarten en afbeeldingen via [pokemontcg.io](https://pokemontcg.io), prijzen via [TCGdex](https://tcgdex.dev); bezit staat in je browser (localStorage), met back-up/terugzetten
 
 ## Starten
 
