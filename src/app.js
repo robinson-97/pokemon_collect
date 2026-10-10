@@ -1,7 +1,7 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=11';
-import { fetchSetPrices, diagnosePrices } from './prices.js?v=11';
-import * as store from './store.js?v=11';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=11';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=12';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=12';
+import * as store from './store.js?v=12';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=12';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');

@@ -6,7 +6,7 @@ const CACHE_TTL = 24 * 3600 * 1000; // prijzen na 24 uur verversen
 
 export const DEFAULT_CONDITION = 'NM';
 // source: 'cm' (Cardmarket, EUR) of 'tcg' (TCGplayer, USD); want: staat waarvoor ontbrekende kaarten geprijsd worden.
-const DEFAULT_PREFS = { source: 'cm', want: 'NM' };
+const DEFAULT_PREFS = { source: 'tcg', want: 'NM' };
 
 // Bezit is {setId: {kaartId: staat}}. Oudere versies bewaarden alleen een lijst kaart-id's.
 function normalizeOwned(owned) {
@@ -19,10 +19,17 @@ function normalizeOwned(owned) {
 
 const state = load();
 
+// Wie de prijsbron nog nooit zelf koos, krijgt de standaard (TCGplayer: Engelse kaarten).
+function loadPrefs(saved) {
+  const prefs = { ...DEFAULT_PREFS, ...saved };
+  if (!saved?.sourceChosen) prefs.source = DEFAULT_PREFS.source;
+  return prefs;
+}
+
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.sets) && s.owned) return { sets: s.sets, owned: normalizeOwned(s.owned), prefs: { ...DEFAULT_PREFS, ...s.prefs } };
+    if (s && Array.isArray(s.sets) && s.owned) return { sets: s.sets, owned: normalizeOwned(s.owned), prefs: loadPrefs(s.prefs) };
   } catch {}
   return { sets: [], owned: {}, prefs: { ...DEFAULT_PREFS } };
 }
@@ -31,7 +38,11 @@ function save() {
 }
 
 export const prefs = () => state.prefs;
-export function setPref(key, value) { state.prefs[key] = value; save(); }
+export function setPref(key, value) {
+  state.prefs[key] = value;
+  if (key === 'source') state.prefs.sourceChosen = true;
+  save();
+}
 
 export const trackedSets = () => state.sets;
 export const isTracked = id => state.sets.some(s => s.id === id);
