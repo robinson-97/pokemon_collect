@@ -1,6 +1,6 @@
-import { fetchSets, fetchSetCards } from './api.js?v=3';
-import * as store from './store.js?v=3';
-import { summarize, usd, categoryOf, TYPE_NL, TYPE_COLOR } from './calc.js?v=3';
+import { fetchSets, fetchSetCards } from './api.js?v=5';
+import * as store from './store.js?v=5';
+import { summarize, usd, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS } from './calc.js?v=5';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -49,7 +49,7 @@ async function renderHome() {
     const tile = app.querySelector(`.set-tile[data-id="${CSS.escape(s.id)}"]`);
     try {
       const { cards } = await loadCards(s.id);
-      const sum = summarize(cards, store.ownedIds(s.id));
+      const sum = summarize(cards, store.ownedMap(s.id));
       tile.querySelector('.bar span').style.width = sum.percent + '%';
       tile.querySelector('.stats').innerHTML =
         `<b>${sum.owned}/${sum.total}</b> · ${sum.percent}%<br>Nog nodig: <b>${price(sum.costToComplete)}</b>`;
@@ -71,7 +71,7 @@ async function renderSet(setId) {
   try { data = await loadCards(setId); }
   catch { app.innerHTML = `<p class="error">Kon de kaarten niet laden. <button class="btn" data-act="retry">Opnieuw</button></p>`; return; }
   const { cards } = data;
-  const owned = store.ownedIds(setId);
+  const owned = store.ownedMap(setId);
 
   app.innerHTML = `
     <a href="#/" class="back">← Alle sets</a>
@@ -96,23 +96,20 @@ async function renderSet(setId) {
   const grid = $('#grid');
   grid.innerHTML = cards.map(c => `
     <article class="card" data-id="${esc(c.id)}">
-      <button class="card-img" data-act="open" aria-label="Vergroot ${esc(c.name)}">
-        <img src="${esc(c.large)}" width="734" height="1024"
+      <button class="card-img" aria-label="${esc(c.name)}, tik om te vergroten, houd ingedrukt om als in bezit te markeren">
+        <img src="${esc(c.large)}" width="734" height="1024" draggable="false"
              alt="${esc(c.name)}" loading="lazy" decoding="async">
-        <span class="badge">✓ In bezit</span>
+        <span class="badge"></span>
       </button>
       <div class="card-info">
-        <div><span class="num">#${esc(c.number)}</span> ${esc(c.name)}</div>
-        <div class="card-foot">
-          <span class="price">${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${price(c.price)}</a>` : price(c.price)}</span>
-          <button class="own-btn" data-act="toggle"></button>
-        </div>
+        <span class="name"><span class="num">${esc(c.number)}</span> ${esc(c.name)}</span>
+        <span class="price">${price(c.price)}</span>
       </div>
     </article>`).join('');
 
   const byId = new Map(cards.map(c => [c.id, c]));
   const fmtDate = t => new Date(t).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' });
-  $('#updated').textContent = `Laagste TCGplayer-prijs (USD), opgehaald ${fmtDate(data.at)}. Klik op een prijs voor de TCGplayer-pagina.`;
+  $('#updated').textContent = `Laagste TCGplayer-prijs (USD), opgehaald ${fmtDate(data.at)}. Tik op een kaart om te vergroten. Houd een kaart ingedrukt om hem als in bezit te markeren.`;
 
   function paint() {
     const sum = summarize(cards, owned);
@@ -126,20 +123,51 @@ async function renderSet(setId) {
     for (const el of grid.children) {
       const c = byId.get(el.dataset.id), has = owned.has(c.id);
       el.classList.toggle('owned', has);
-      el.querySelector('.own-btn').textContent = has ? 'Verwijderen' : 'Heb ik';
+      el.querySelector('.badge').textContent = has ? `✓ ${owned.get(c.id)}` : '';
+      el.dataset.cond = has ? owned.get(c.id) : '';
       const show = (view.filter === 'all' || (view.filter === 'owned') === has) &&
         (!view.type || categoryOf(c) === view.type) &&
         (!q || c.name.toLowerCase().includes(q) || c.number.toLowerCase() === q.replace(/^#/, ''));
       el.hidden = !show;
     }
   }
-  function toggle(id) { store.toggleOwned(setId, id) ? owned.add(id) : owned.delete(id); paint(); }
+  function setCond(id, cond) {
+    store.setOwned(setId, id, cond);
+    cond ? owned.set(id, cond) : owned.delete(id);
+    paint();
+  }
+  const toggle = id => setCond(id, owned.has(id) ? null : store.DEFAULT_CONDITION);
+  const detail = id => openCard(byId.get(id), owned, setCond);
 
+  // Tik = vergroten, lang indrukken (of rechtsklik) = in bezit aan/uit.
+  let press = null, longFired = false;
+  const cancelPress = () => { clearTimeout(press); press = null; };
+  grid.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.card'); if (!el || e.button > 0) return;
+    longFired = false;
+    const x = e.clientX, y = e.clientY;
+    el._start = { x, y };
+    press = setTimeout(() => {
+      longFired = true;
+      toggle(el.dataset.id);
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+      navigator.vibrate?.(25);
+    }, 450);
+  });
+  grid.addEventListener('pointermove', e => {
+    const el = e.target.closest('.card');
+    if (press && el?._start && Math.hypot(e.clientX - el._start.x, e.clientY - el._start.y) > 10) cancelPress();
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) grid.addEventListener(ev, cancelPress);
+  grid.addEventListener('contextmenu', e => {
+    const el = e.target.closest('.card'); if (!el) return;
+    e.preventDefault();
+    if (!longFired && e.pointerType !== 'touch') toggle(el.dataset.id); // rechtsklik met de muis
+  });
   grid.onclick = e => {
     const el = e.target.closest('.card'); if (!el) return;
-    const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'toggle') toggle(el.dataset.id);
-    if (act === 'open') openCard(byId.get(el.dataset.id), owned, toggle);
+    if (longFired) { longFired = false; return; }
+    detail(el.dataset.id);
   };
   $('#filters').onclick = e => {
     const f = e.target.dataset.f; if (!f) return;
@@ -174,20 +202,29 @@ async function renderSet(setId) {
   paint();
 }
 
-function openCard(c, owned, toggle) {
+function openCard(c, owned, setCond) {
   const dlg = $('#dlg-card');
+  const link = txt => (c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${txt}</a>` : txt);
   const draw = () => {
-    const has = owned.has(c.id);
+    const cond = owned.get(c.id);
     $('#card-detail').innerHTML = `
       <button class="close" data-close aria-label="Sluiten">✕</button>
       <img src="${esc(c.large)}" alt="${esc(c.name)}">
       <div class="detail-info">
-        <h3>#${esc(c.number)} ${esc(c.name)}</h3>
+        <h3><span class="num">${esc(c.number)}</span> ${esc(c.name)}</h3>
         <p class="muted">${esc(c.rarity)}</p>
-        <p>Laagste prijs: <b>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${price(c.price)}</a>` : price(c.price)}</b></p>
-        <button class="btn ${has ? '' : 'primary'}" id="d-toggle">${has ? '✓ In bezit — verwijderen' : 'Ik heb deze kaart'}</button>
+        <p>Laagste prijs: <b>${link(price(c.price))}</b></p>
+        <p class="label">Mijn exemplaar</p>
+        <div class="conds" role="group" aria-label="Staat van de kaart">
+          <button data-c="" class="${cond ? '' : 'on'}">Niet in bezit</button>
+          ${CONDITIONS.map(k => `<button data-c="${k.code}" class="${cond === k.code ? 'on' : ''}" title="${esc(k.nl)}: ${esc(k.hint)}">${k.code}</button>`).join('')}
+        </div>
+        <p class="muted small">${cond ? esc(CONDITIONS.find(k => k.code === cond).nl + ' · ' + CONDITIONS.find(k => k.code === cond).hint) : 'Kies de staat van je kaart om hem als in bezit te markeren.'}</p>
       </div>`;
-    $('#d-toggle').onclick = () => { toggle(c.id); draw(); };
+    $('#card-detail .conds').onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      setCond(c.id, b.dataset.c || null); draw();
+    };
   };
   draw();
   dlg.showModal();

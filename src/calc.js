@@ -30,3 +30,12 @@ export const TYPE_COLOR = {
   Fighting: '#a1572b', Darkness: '#455a64', Metal: '#90a4ae', Fairy: '#ec7fb6', Dragon: '#b8860b',
   Colorless: '#bdbdbd', Trainer: '#5c6bc0', Energy: '#26a69a',
 };
+
+// Staat van de kaart, volgens de TCGplayer-indeling.
+export const CONDITIONS = [
+  { code: 'NM', nl: 'Near Mint', hint: 'Bijna perfect' },
+  { code: 'LP', nl: 'Lightly Played', hint: 'Lichte gebruikssporen' },
+  { code: 'MP', nl: 'Moderately Played', hint: 'Duidelijke gebruikssporen' },
+  { code: 'HP', nl: 'Heavily Played', hint: 'Veel slijtage' },
+  { code: 'DMG', nl: 'Damaged', hint: 'Beschadigd' },
+];

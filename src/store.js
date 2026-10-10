@@ -3,12 +3,23 @@ const KEY = 'pokemon-collect/v1';
 const CACHE_PREFIX = 'pokemon-collect/cards-v2/';
 const CACHE_TTL = 24 * 3600 * 1000; // prijzen na 24 uur verversen
 
+export const DEFAULT_CONDITION = 'NM';
+
+// Bezit is {setId: {kaartId: staat}}. Oudere versies bewaarden alleen een lijst kaart-id's.
+function normalizeOwned(owned) {
+  const out = {};
+  for (const [setId, v] of Object.entries(owned || {})) {
+    out[setId] = Array.isArray(v) ? Object.fromEntries(v.map(id => [id, DEFAULT_CONDITION])) : { ...v };
+  }
+  return out;
+}
+
 const state = load();
 
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.sets) && s.owned) return s;
+    if (s && Array.isArray(s.sets) && s.owned) return { sets: s.sets, owned: normalizeOwned(s.owned) };
   } catch {}
   return { sets: [], owned: {} };
 }
@@ -32,13 +43,14 @@ export function removeSet(id) {
   save();
 }
 
-export const ownedIds = setId => new Set(state.owned[setId] || []);
-export function toggleOwned(setId, cardId) {
-  const set = ownedIds(setId);
-  set.has(cardId) ? set.delete(cardId) : set.add(cardId);
-  state.owned[setId] = [...set];
+// Map kaart-id -> staat voor één set (leest alleen; schrijven gaat via setOwned).
+export const ownedMap = setId => new Map(Object.entries(state.owned[setId] || {}));
+// condition = null verwijdert de kaart uit je bezit.
+export function setOwned(setId, cardId, condition) {
+  const cur = { ...(state.owned[setId] || {}) };
+  if (condition) cur[cardId] = condition; else delete cur[cardId];
+  state.owned[setId] = cur;
   save();
-  return set.has(cardId);
 }
 
 export function getCachedCards(setId) {
@@ -57,6 +69,6 @@ export function importData(text) {
   const s = JSON.parse(text);
   if (!s || !Array.isArray(s.sets) || typeof s.owned !== 'object') throw new Error('Ongeldig back-upbestand');
   state.sets = s.sets;
-  state.owned = s.owned;
+  state.owned = normalizeOwned(s.owned);
   save();
 }
