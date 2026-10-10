@@ -49,7 +49,7 @@ export function lowestPrice(prices, field = 'low') {
   if (!prices) return null;
   let best = null;
   for (const v of Object.values(prices)) {
-    const p = field === 'low' ? v.low ?? v.market : v[field];
+    const p = field === 'low' ? v.low ?? v.market ?? v.mid : v[field];
     if (typeof p === 'number' && p > 0 && (best === null || p < best)) best = p;
   }
   return best;

@@ -126,7 +126,6 @@ dialog::backdrop { background: #000a; }
 .card-info .price { color: var(--text); font-weight: 700; font-size: .95rem; white-space: nowrap; }
 .card-info .price small { font-weight: 500; color: var(--muted); font-size: .72rem; }
 .card-info .price .none { font-weight: 400; color: var(--muted); font-size: .8rem; }
-.topbar .seg button { padding: 6px 10px; font-size: .85rem; }
 .want { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
 .want select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
 .bigprice { font-size: 1.8rem; font-weight: 800; margin: 10px 0 8px; font-variant-numeric: tabular-nums; }
@@ -135,4 +134,35 @@ dialog::backdrop { background: #000a; }
 .prices th { text-align: left; padding: 8px 0 4px; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .prices td { padding: 3px 0; } .prices td:last-child { text-align: right; }
 .prices tr.hl td { font-weight: 700; color: var(--accent); }
-@media (max-width: 600px) { .topbar { flex-wrap: wrap; gap: 6px; } }
+
+/* compacte balk en werkbalk */
+html, body { max-width: 100%; overflow-x: hidden; }
+.topbar { gap: 8px; padding: 8px 12px; }
+.brand { font-size: 1rem; white-space: nowrap; }
+.topbar-actions { gap: 8px; min-width: 0; }
+.topbar .seg button { padding: 6px 10px; font-size: .8rem; white-space: nowrap; }
+.topbar .btn { padding: 6px 12px; font-size: .85rem; white-space: nowrap; }
+.foot { text-align: center; padding: 24px 16px 32px; color: var(--muted); font-size: .8rem; }
+.linkbtn { font: inherit; background: none; border: 0; color: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
+.notice { margin: 8px 0; padding: 10px 12px; border-radius: 10px; font-size: .88rem; background: #f4511e1f; border: 1px solid #f4511e66; }
+.opts { margin: 4px 0; }
+.opts summary { cursor: pointer; color: var(--muted); font-size: .88rem; padding: 4px 0; width: max-content; }
+.opts-body { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; }
+.toolbar { margin: 8px 0 2px; }
+.toolbar .seg { flex: 0 0 auto; }
+.set-head h1 { font-size: 1.6rem; margin: 4px 0 0; }
+.set-head p { margin: 0; }
+@media (max-width: 600px) {
+  main { padding: 12px; }
+  .brand .full { display: none; }
+  .set-head { gap: 8px; }
+  .summary { padding: 10px 12px; flex-basis: 100%; max-width: none; }
+  .cost { font-size: 1.1rem; }
+  .seg button { padding: 7px 10px; font-size: .9rem; }
+  .toolbar input { flex-basis: 100%; }
+  .card-info { font-size: .8rem; flex-direction: column; gap: 2px; }
+  .card-info .price { font-size: .9rem; }
+  h1 { font-size: 1.4rem; }
+  .set-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .set-tile { padding: 12px; }
+}

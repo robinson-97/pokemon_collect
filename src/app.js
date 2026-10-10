@@ -1,6 +1,6 @@
-import { fetchSets, fetchSetCards } from './api.js?v=6';
-import * as store from './store.js?v=6';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=6';
+import { fetchSets, fetchSetCards } from './api.js?v=7';
+import * as store from './store.js?v=7';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=7';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -90,12 +90,18 @@ async function renderSet(setId) {
         <button data-f="owned">In bezit</button>
       </div>
       <input id="q" type="search" placeholder="Zoek kaart of nummer…">
-      <label class="want" title="Cardmarket kent geen prijs per staat. Dit bepaalt waarvoor ontbrekende kaarten geprijsd worden.">Ontbrekende kaarten:
-        <select id="want"><option value="NM">Excellent of beter</option><option value="any">Elke staat (goedkoopst)</option></select></label>
-      <button class="btn ghost" id="refresh" title="Prijzen opnieuw ophalen">↻ Prijzen</button>
-      <button class="btn ghost danger" id="remove">Set verwijderen</button>
     </div>
+    <details class="opts">
+      <summary>Opties</summary>
+      <div class="opts-body">
+        <label class="want" title="Cardmarket kent geen prijs per staat. Dit bepaalt waarvoor ontbrekende kaarten geprijsd worden.">Ontbrekende kaarten prijzen als
+          <select id="want"><option value="NM">Excellent of beter</option><option value="any">Elke staat (goedkoopst)</option></select></label>
+        <button class="btn" id="refresh">↻ Prijzen verversen</button>
+        <button class="btn danger" id="remove">Set verwijderen</button>
+      </div>
+    </details>
     <div class="types" id="types"></div>
+    <p class="notice" id="priceinfo" hidden></p>
     <p class="muted small" id="updated"></p>
     <div class="card-grid" id="grid"></div>`;
 
@@ -122,7 +128,14 @@ async function renderSet(setId) {
     $('#want').value = want;
     $('#want').hidden = source !== 'cm';
     const sum = summarize(withPrices(cards, source, want), owned);
-    $('#updated').textContent = `Laagste ${SOURCES[source].name}-prijzen, opgehaald ${fmtDate(data.at)}. ${hint}`;
+    const priced = cards.filter(c => priceFor(c, source, null, want) != null).length;
+    const hasTcg = cards.filter(c => c.tcg && (c.tcg.url || c.tcg.low != null)).length;
+    const hasCm = cards.filter(c => c.cm).length;
+    const info = $('#priceinfo');
+    info.hidden = priced > 0;
+    info.textContent = `De kaartendatabase gaf voor deze set geen ${SOURCES[source].name}-prijzen terug (TCGplayer-gegevens: ${hasTcg}/${cards.length}, Cardmarket-gegevens: ${hasCm}/${cards.length}).` +
+      ((source === 'cm' ? hasTcg : hasCm) ? ` Probeer de andere prijsbron bovenaan.` : ` Probeer later "Prijzen verversen" onder Opties.`);
+    $('#updated').textContent = `Prijzen: ${SOURCES[source].name}, bij ${priced} van ${cards.length} kaarten bekend. Opgehaald ${fmtDate(data.at)}. ${hint}`;
     $('#summary').innerHTML = `
       <div class="bar big"><span style="width:${sum.percent}%"></span></div>
       <div class="sum-row"><span><b>${sum.owned}</b> / ${sum.total} kaarten (${sum.percent}%)</span>

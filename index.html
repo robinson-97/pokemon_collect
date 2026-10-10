@@ -4,21 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pokémon Collectie</title>
-  <link rel="stylesheet" href="src/style.css?v=6">
+  <link rel="stylesheet" href="src/style.css?v=7">
 </head>
 <body>
   <header class="topbar">
-    <a href="#/" class="brand">Pokémon Collectie <small class="ver">v6</small></a>
+    <a href="#/" class="brand"><span class="full">Pokémon </span>Collectie</a>
     <div class="topbar-actions">
       <div class="seg" id="src" role="group" aria-label="Prijsbron">
-        <button data-s="cm">Cardmarket €</button>
-        <button data-s="tcg">TCGplayer $</button>
+        <button data-s="cm">Cardmarket</button>
+        <button data-s="tcg">TCGplayer</button>
       </div>
-      <button id="btn-backup" class="btn ghost" title="Back-up maken of terugzetten">Back-up</button>
-      <button id="btn-add" class="btn primary">+ Set toevoegen</button>
+      <button id="btn-add" class="btn primary" aria-label="Set toevoegen">+ Set</button>
     </div>
   </header>
   <main id="app"></main>
+  <footer class="foot"><button id="btn-backup" class="linkbtn">Back-up</button> · <span>versie 7</span></footer>
 
   <dialog id="dlg-add">
     <form method="dialog" class="dlg-head">
@@ -46,6 +46,6 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="src/app.js?v=6"></script>
+  <script type="module" src="src/app.js?v=7"></script>
 </body>
 </html>
