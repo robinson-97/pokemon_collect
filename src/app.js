@@ -1,6 +1,6 @@
 import { fetchSets, fetchSetCards } from './api.js';
 import * as store from './store.js';
-import { summarize, usd } from './calc.js';
+import { summarize, usd, categoryOf, TYPE_NL, TYPE_COLOR } from './calc.js';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -60,12 +60,12 @@ async function renderHome() {
 }
 
 /* ---------- Eén set ---------- */
-let view = { filter: 'all', q: '' };
+let view = { filter: 'all', q: '', type: '' };
 
 async function renderSet(setId) {
   const set = store.trackedSets().find(s => s.id === setId);
   if (!set) { location.hash = '#/'; return; }
-  view = { filter: 'all', q: '' };
+  view = { filter: 'all', q: '', type: '' };
   app.innerHTML = `<p class="muted">Kaarten laden…</p>`;
   let data;
   try { data = await loadCards(setId); }
@@ -89,6 +89,7 @@ async function renderSet(setId) {
       <button class="btn ghost" id="refresh" title="Prijzen opnieuw ophalen">↻ Prijzen</button>
       <button class="btn ghost danger" id="remove">Set verwijderen</button>
     </div>
+    <div class="types" id="types"></div>
     <p class="muted small" id="updated"></p>
     <div class="card-grid" id="grid"></div>`;
 
@@ -96,7 +97,7 @@ async function renderSet(setId) {
   grid.innerHTML = cards.map(c => `
     <article class="card" data-id="${esc(c.id)}">
       <button class="card-img" data-act="open" aria-label="Vergroot ${esc(c.name)}">
-        <img src="${esc(c.small)}" srcset="${esc(c.small)} 245w, ${esc(c.large)} 734w" sizes="(max-width:600px) 45vw, 220px"
+        <img src="${esc(c.large)}" width="734" height="1024"
              alt="${esc(c.name)}" loading="lazy" decoding="async">
         <span class="badge">✓ In bezit</span>
       </button>
@@ -127,6 +128,7 @@ async function renderSet(setId) {
       el.classList.toggle('owned', has);
       el.querySelector('.own-btn').textContent = has ? 'Verwijderen' : 'Heb ik';
       const show = (view.filter === 'all' || (view.filter === 'owned') === has) &&
+        (!view.type || categoryOf(c) === view.type) &&
         (!q || c.name.toLowerCase().includes(q) || c.number.toLowerCase() === q.replace(/^#/, ''));
       el.hidden = !show;
     }
@@ -155,6 +157,19 @@ async function renderSet(setId) {
     if (confirm(`"${set.name}" uit je lijst halen? Je bezit van deze set wordt gewist.`)) {
       store.removeSet(setId); location.hash = '#/';
     }
+  };
+  const counts = new Map();
+  for (const c of cards) counts.set(categoryOf(c), (counts.get(categoryOf(c)) || 0) + 1);
+  const cats = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a));
+  $('#types').innerHTML = cats.length > 1
+    ? `<button class="chip on" data-t="">Alle typen</button>` + cats.map(t =>
+        `<button class="chip" data-t="${esc(t)}"><i style="background:${TYPE_COLOR[t] || '#999'}"></i>${esc(TYPE_NL[t] || t)} <small>${counts.get(t)}</small></button>`).join('')
+    : '';
+  $('#types').onclick = e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    view.type = b.dataset.t;
+    for (const x of $('#types').children) x.classList.toggle('on', x.dataset.t === view.type);
+    paint();
   };
   paint();
 }

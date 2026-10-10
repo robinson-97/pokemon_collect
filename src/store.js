@@ -1,6 +1,6 @@
 // Opslag in localStorage: gekozen sets, bezit en een cache van kaartdata.
 const KEY = 'pokemon-collect/v1';
-const CACHE_PREFIX = 'pokemon-collect/cards/';
+const CACHE_PREFIX = 'pokemon-collect/cards-v2/';
 const CACHE_TTL = 24 * 3600 * 1000; // prijzen na 24 uur verversen
 
 const state = load();

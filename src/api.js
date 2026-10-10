@@ -1,6 +1,6 @@
 // Dunne laag rond de pokemontcg.io v2 API (gratis, levert o.a. TCGplayer-prijzen).
 const BASE = 'https://api.pokemontcg.io/v2';
-const CARD_FIELDS = 'id,name,number,rarity,images,tcgplayer';
+const CARD_FIELDS = 'id,name,number,rarity,supertype,types,images,tcgplayer';
 
 async function get(path, params) {
   const url = `${BASE}${path}?${new URLSearchParams(params)}`;
@@ -61,6 +61,8 @@ function slimCard(c) {
     name: c.name,
     number: c.number,
     rarity: c.rarity || '',
+    supertype: c.supertype || '',
+    types: c.types || [],
     small: c.images?.small,
     large: c.images?.large,
     price: lowestPrice(c.tcgplayer?.prices),
