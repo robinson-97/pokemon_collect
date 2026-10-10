@@ -1,7 +1,7 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=10';
-import { fetchSetPrices, diagnosePrices } from './prices.js?v=10';
-import * as store from './store.js?v=10';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=10';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=11';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=11';
+import * as store from './store.js?v=11';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=11';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -20,11 +20,13 @@ function toast(msg) {
 
 /* ---------- Kaarten laden (cache + verversen) ---------- */
 // Prijzen komen apart binnen (TCGdex) en worden over de kaarten heen gelegd.
+// Zoekt de kaart op Cardmarket, met het filter op Engelse aanbiedingen (language=1).
+const cmEnglishUrl = c => `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(`${c.name} ${c.number}`)}&language=1`;
 function applyPrices(cards, map = {}) {
   for (const c of cards) {
     const p = map[c.id];
     c.tcg = { low: null, market: null, ...c.tcg, ...p?.tcg };
-    c.cm = p?.cm ? { ...p.cm, url: `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(`${c.name} ${c.number}`)}` } : null;
+    c.cm = p?.cm ? { ...p.cm, url: cmEnglishUrl(c) } : null;
   }
 }
 async function loadCards(setId, { force = false } = {}) {
@@ -296,6 +298,7 @@ function openCard(c, owned, setCond) {
         <h3><span class="num">${esc(c.number)}</span> ${esc(c.name)}</h3>
         <p class="muted">${esc(c.rarity)}</p>
         ${priceBlock(c, cond)}
+        <a class="btn linkout" href="${esc(cmEnglishUrl(c))}" target="_blank" rel="noopener">Engelse aanbiedingen op Cardmarket ↗</a>
         <p class="label">Mijn exemplaar</p>
         <div class="conds" role="group" aria-label="Staat van de kaart">
           <button data-c="" class="${cond ? '' : 'on'}">Niet in bezit</button>

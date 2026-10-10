@@ -185,3 +185,4 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .pick-done { color: var(--ok); font-weight: 600; padding: 8px 0; }
 @media (max-width: 600px) { .pick-grid { grid-template-columns: 1fr 1fr; } dialog { padding: 14px; } }
 .dlg-head h2 { font-size: 1.15rem; }
+.linkout { display: block; text-align: center; text-decoration: none; margin-top: 12px; }
