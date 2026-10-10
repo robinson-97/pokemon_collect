@@ -1,6 +1,6 @@
-import { fetchSets, fetchSetCards } from './api.js?v=7';
-import * as store from './store.js?v=7';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=7';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=8';
+import * as store from './store.js?v=8';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices } from './calc.js?v=8';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -101,7 +101,7 @@ async function renderSet(setId) {
       </div>
     </details>
     <div class="types" id="types"></div>
-    <p class="notice" id="priceinfo" hidden></p>
+    <div class="notice" id="priceinfo" hidden></div>
     <p class="muted small" id="updated"></p>
     <div class="card-grid" id="grid"></div>`;
 
@@ -133,8 +133,14 @@ async function renderSet(setId) {
     const hasCm = cards.filter(c => c.cm).length;
     const info = $('#priceinfo');
     info.hidden = priced > 0;
-    info.textContent = `De kaartendatabase gaf voor deze set geen ${SOURCES[source].name}-prijzen terug (TCGplayer-gegevens: ${hasTcg}/${cards.length}, Cardmarket-gegevens: ${hasCm}/${cards.length}).` +
+    info.innerHTML = `<span></span> <button class="btn" id="diag">Diagnose</button><pre id="diag-out" hidden></pre>`;
+    info.firstChild.textContent = `De kaartendatabase gaf voor deze set geen ${SOURCES[source].name}-prijzen terug (TCGplayer-gegevens: ${hasTcg}/${cards.length}, Cardmarket-gegevens: ${hasCm}/${cards.length}).` +
       ((source === 'cm' ? hasTcg : hasCm) ? ` Probeer de andere prijsbron bovenaan.` : ` Probeer later "Prijzen verversen" onder Opties.`);
+    const diagBtn = $('#diag');
+    if (diagBtn) diagBtn.onclick = async () => {
+      const out = $('#diag-out'); out.hidden = false; out.textContent = 'Bezig…';
+      out.textContent = await diagnose(setId);
+    };
     $('#updated').textContent = `Prijzen: ${SOURCES[source].name}, bij ${priced} van ${cards.length} kaarten bekend. Opgehaald ${fmtDate(data.at)}. ${hint}`;
     $('#summary').innerHTML = `
       <div class="bar big"><span style="width:${sum.percent}%"></span></div>

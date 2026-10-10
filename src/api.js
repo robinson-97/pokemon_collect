@@ -86,3 +86,16 @@ function slimCard(c) {
 export function byNumber(a, b) {
   return a.number.localeCompare(b.number, 'en', { numeric: true });
 }
+
+// Haalt één kaart ongefilterd op, om te zien wat de database echt teruggeeft (voor de Diagnose-knop).
+export async function diagnose(setId) {
+  const url = `${BASE}/cards?${new URLSearchParams({ q: `set.id:${setId}`, pageSize: 1, select: 'id,name,tcgplayer,cardmarket' })}`;
+  const t0 = Date.now();
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    return `HTTP ${res.status} in ${Date.now() - t0} ms\n${text.slice(0, 1500)}`;
+  } catch (e) {
+    return `Geen verbinding: ${e.message} (na ${Date.now() - t0} ms)`;
+  }
+}
