@@ -106,3 +106,4 @@ dialog::backdrop { background: #000a; }
   .card-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .card { padding: 6px; }
 }
+.ver { font-weight: 400; font-size: .7rem; color: var(--muted); }
