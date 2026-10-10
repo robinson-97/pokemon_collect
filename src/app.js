@@ -1,7 +1,8 @@
-import { fetchSets, fetchSetCards, diagnose } from './api.js?v=13';
-import { fetchSetPrices, diagnosePrices } from './prices.js?v=13';
-import * as store from './store.js?v=13';
-import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices, effectiveSource } from './calc.js?v=13';
+import { fetchSets, fetchSetCards, diagnose } from './api.js?v=14';
+import { fetchSetPrices, diagnosePrices } from './prices.js?v=14';
+import { openScanner, initScanner } from './scanner.js?v=14';
+import * as store from './store.js?v=14';
+import { summarize, categoryOf, TYPE_NL, TYPE_COLOR, CONDITIONS, SOURCES, priceFor, withPrices, effectiveSource } from './calc.js?v=14';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
@@ -426,3 +427,23 @@ $('#src').onclick = e => {
   repaint ? repaint() : route();
 };
 drawSource();
+
+/* ---------- Kaartscanner ---------- */
+initScanner();
+$('#btn-scan').onclick = () => openScanner({
+  trackedSets: () => store.trackedSets(),
+  otherSets: async () => {
+    allSets ??= await fetchSets();
+    return allSets.filter(s => !store.isTracked(s.id));
+  },
+  // Eigen sets komen uit de cache; andere sets worden alleen opgehaald om te zoeken.
+  getCards: async set => (store.isTracked(set.id) ? (await loadCards(set.id)).cards : fetchSetCards(set.id)),
+  ownedMap: setId => store.ownedMap(setId),
+  addSet: set => store.addSet(set),
+  setOwned: (setId, cardId, cond) => store.setOwned(setId, cardId, cond),
+  priceText: (card, tracked) => {
+    const p = tracked ? priceFor(card, shownSource ?? prefs().source, null, prefs().want) : null;
+    return p == null ? '' : `Laagste prijs: ${price(p, shownSource ?? prefs().source)}`;
+  },
+  onDone: () => { toast('Collectie bijgewerkt'); route(); },
+});

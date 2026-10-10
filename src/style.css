@@ -186,3 +186,20 @@ html, body { max-width: 100%; overflow-x: hidden; }
 @media (max-width: 600px) { .pick-grid { grid-template-columns: 1fr 1fr; } dialog { padding: 14px; } }
 .dlg-head h2 { font-size: 1.15rem; }
 .linkout { display: block; text-align: center; text-decoration: none; margin-top: 12px; }
+
+/* scanner */
+.fab { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 6; display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 18px; border: 0; border-radius: 99px; background: var(--text); color: var(--bg); font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px #0005; }
+.scan { width: min(560px, 96vw); }
+.scan-view { position: relative; margin: 8px auto; background: #000; border-radius: 12px; overflow: hidden; }
+.scan-view video { width: 100%; height: 100%; display: block; object-fit: cover; }
+.scan-guide { position: absolute; border: 2px solid #fff; border-radius: 4%; box-shadow: 0 0 0 100vmax #0007; pointer-events: none; }
+#scan-status { min-height: 2.6em; } #scan-status[data-kind="warn"] { color: var(--accent); } #scan-status[data-kind="ok"] { color: var(--ok); font-weight: 600; }
+#scan-go { width: 100%; }
+.scan-form { display: flex; gap: 8px; margin: 12px 0; }
+.scan-form input { flex: 1; min-width: 0; font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+.scan-hit { display: flex; gap: 12px; padding: 10px; margin-top: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.scan-hit img { width: 96px; flex: 0 0 auto; align-self: flex-start; border-radius: 6px; }
+.scan-hit-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.ok { color: var(--ok); font-weight: 600; }
+.foot { padding-bottom: 88px; }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pokémon Collectie</title>
-  <link rel="stylesheet" href="src/style.css?v=13">
+  <link rel="stylesheet" href="src/style.css?v=14">
 </head>
 <body>
   <header class="topbar">
@@ -18,7 +18,7 @@
     </div>
   </header>
   <main id="app"></main>
-  <footer class="foot"><button id="btn-backup" class="linkbtn">Back-up</button> · <span>versie 13</span></footer>
+  <footer class="foot"><button id="btn-backup" class="linkbtn">Back-up</button> · <span>versie 14</span></footer>
 
   <dialog id="dlg-add">
     <form method="dialog" class="dlg-head">
@@ -46,7 +46,27 @@
     </div>
   </dialog>
 
+  <dialog id="dlg-scan" class="scan">
+    <div class="dlg-head"><h2>Kaart scannen</h2><button id="scan-close" class="btn ghost" aria-label="Sluiten">✕</button></div>
+    <div id="scan-view" class="scan-view" hidden>
+      <video id="scan-video" playsinline muted autoplay></video>
+      <div id="scan-guide" class="scan-guide"></div>
+    </div>
+    <p id="scan-status" class="muted small" role="status">Camera starten…</p>
+    <button id="scan-go" class="btn primary big" hidden>Scan kaart</button>
+    <form id="scan-form" class="scan-form">
+      <input id="scan-input" type="search" placeholder="Of typ nummer (25/165) of naam" autocomplete="off">
+      <button class="btn">Zoek</button>
+    </form>
+    <div id="scan-results"></div>
+  </dialog>
+
+  <button id="btn-scan" class="fab" aria-label="Kaart scannen">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+    <span>Scan</span>
+  </button>
+
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="src/app.js?v=13"></script>
+  <script type="module" src="src/app.js?v=14"></script>
 </body>
 </html>
