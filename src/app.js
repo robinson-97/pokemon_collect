@@ -1,6 +1,6 @@
-import { fetchSets, fetchSetCards } from './api.js';
-import * as store from './store.js';
-import { summarize, usd, categoryOf, TYPE_NL, TYPE_COLOR } from './calc.js';
+import { fetchSets, fetchSetCards } from './api.js?v=3';
+import * as store from './store.js?v=3';
+import { summarize, usd, categoryOf, TYPE_NL, TYPE_COLOR } from './calc.js?v=3';
 
 const $ = sel => document.querySelector(sel);
 const app = $('#app');
